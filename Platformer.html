@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+canvas {
+    border: 1px solid #d3d3d3;
+    background-color: #f1f1f1;
+}
+</style>
+</head>
+<body onload="startGame()">
+<script>
+
+var myGamePiece;
+var boardY = 360;
+var inAir = true;
+var platforms = [];
+
+function startGame() {
+	myGamePiece = new component(25, 25, "red", 50, 330, "red", "player");
+	platforms[0] = new component(75, 15, "red", 50, 270, "red", "scene");
+	background = new component(2500, 600, "background.png", 0, 0, "image", "scene");
+	myGameArea.start();
+}
+
+var myGameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+        this.canvas.width = 720;
+        this.canvas.height = boardY;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+		this.interval = setInterval(updateGameArea, 20);
+		window.addEventListener('keydown', function (e) {
+            myGameArea.keys = (myGameArea.keys || []);
+            myGameArea.keys[e.keyCode] = true;
+        })
+        window.addEventListener('keyup', function (e) {
+            myGameArea.keys[e.keyCode] = false; 
+        })
+    },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+	stop : function() {
+        clearInterval(this.interval);
+    }
+}
+
+function component(width, height, color, x, y, type, category) {
+	this.type = type;
+		if (type == "image") {
+		this.image = new Image();
+		this.image.src = color;
+	  }
+    this.width = width;
+    this.height = height;
+	this.speedX = 0;
+    this.speedY = 0;
+    this.x = x;
+    this.y = y;
+	this.category = category; 
+	this.gravity = 0.05;
+	this.gravitySpeed = 0;
+	
+    this.update = function() {
+        ctx = myGameArea.context;
+		if (type == "image") {
+		  ctx.drawImage(this.image, 
+			this.x, 
+			this.y,
+			this.width, this.height);
+		} else {
+		  ctx.fillStyle = color;
+		  ctx.fillRect(this.x, this.y, this.width, this.height);
+		}
+    }
+	
+    this.newPos = function() {
+			
+			if (this.category == "player") {
+				if (this.speedY < 0) {
+					this.y += this.speedY
+				}
+				
+				else {
+					this.gravitySpeed += this.gravity;
+					this.y += this.speedY + this.gravitySpeed;
+					this.hitBottom();
+				}
+				
+				if ((this.x + this.speedX > 720 - 59) || (this.x + this.speedX < 15)) {
+						if (background.x - this.speedX < -1) {
+							background.x -= this.speedX;
+							platforms[0].x -= this.speedX;
+						}				
+				}
+				else {
+					this.x += this.speedX;
+				}
+			}
+			
+			else {
+				this.x += this.speedX;
+				this.y += this.speedY;
+			}
+    }
+
+	this.hitBottom = function() {
+        var rockbottom = myGameArea.canvas.height - this.height;
+        if (this.y > rockbottom) {
+			inAir = false;
+            this.y = rockbottom;
+        }
+	}
+		
+	this.crashWith = function(otherobj) {
+        var myleft = this.x;
+        var myright = this.x + (this.width);
+        var mytop = this.y;
+        var mybottom = this.y + (this.height);
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + (otherobj.width);
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + (otherobj.height);
+        var crash = true;
+        if ((mybottom < othertop) ||
+               (mytop > otherbottom) ||
+               (myright < otherleft) ||
+               (myleft > otherright)) {
+           crash = false;
+        }
+        return crash;
+    }
+}
+
+function updateGameArea() {
+    myGameArea.clear();
+	stopMoving(myGamePiece);
+	stopMoving(myGamePiece);
+    if (myGameArea.keys) {
+		handleInput();
+	}
+	background.newPos();
+    background.update();
+	platforms[0].newPos();
+	platforms[0].update();
+    myGamePiece.newPos();
+    myGamePiece.update();
+}
+
+function handleInput() {
+    if (myGameArea.keys[87]) {
+		if (!inAir) {
+			inAir = true;
+			myGamePiece.speedY = -17;
+		}
+	}
+	 
+	if (myGameArea.keys[65]) {myGamePiece.speedX = -5; }
+    if (myGameArea.keys[68]) {myGamePiece.speedX = 5; }
+}
+
+
+function stopMoving(given) {
+	if (given.category == "player") {
+		given.speedX = 0;
+		given.speedY += 0.6;
+	}
+	
+	else {
+		given.speedX = 0;
+		given.speedY = 0;
+	}
+}
+</script>
+
+</body>
+</html>
