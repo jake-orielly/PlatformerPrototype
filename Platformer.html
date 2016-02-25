@@ -13,13 +13,17 @@ canvas {
 <script>
 
 var myGamePiece;
-var boardY = 360;
+var boardY = 600;
 var inAir = true;
 var platforms = [];
+var projectiles = [];
+var shootCooldown = 0;
 
 function startGame() {
-	myGamePiece = new component(25, 25, "red", 50, 330, "red", "player");
-	platforms[0] = new component(75, 15, "red", 50, 270, "red", "scene");
+	myGamePiece = new component(50, 50, "Dao.png", 50, 550, "image", "player");
+	platforms[0] = new component(115, 15, "red", 150, 470, "red", "scene");
+	platforms[1] = new component(115, 15, "red", 345, 415, "red", "scene");
+	platforms[2] = new component(115, 15, "red", 545, 415, "red", "scene");
 	background = new component(2500, 600, "background.png", 0, 0, "image", "scene");
 	myGameArea.start();
 }
@@ -27,7 +31,7 @@ function startGame() {
 var myGameArea = {
     canvas : document.createElement("canvas"),
     start : function() {
-        this.canvas.width = 720;
+        this.canvas.width = 920;
         this.canvas.height = boardY;
         this.context = this.canvas.getContext("2d");
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
@@ -64,6 +68,10 @@ function component(width, height, color, x, y, type, category) {
 	this.gravity = 0.05;
 	this.gravitySpeed = 0;
 	
+	if (this.category == "projectile") {
+		this.speedX = 10;
+	}
+	
     this.update = function() {
         ctx = myGameArea.context;
 		if (type == "image") {
@@ -84,16 +92,23 @@ function component(width, height, color, x, y, type, category) {
 					this.y += this.speedY
 				}
 				
+				else if (this.crashWithPlatforms()) {
+					inAir= false;
+					
+				}
+				
 				else {
 					this.gravitySpeed += this.gravity;
 					this.y += this.speedY + this.gravitySpeed;
 					this.hitBottom();
 				}
 				
-				if ((this.x + this.speedX > 720 - 59) || (this.x + this.speedX < 15)) {
+				if ((this.x + this.speedX > 500 - 59) || (this.x + this.speedX < 15)) {
 						if (background.x - this.speedX < -1) {
 							background.x -= this.speedX;
-							platforms[0].x -= this.speedX;
+							for (var i = 0; i < platforms.length; i++) {
+								platforms[i].x -= this.speedX;
+							}
 						}				
 				}
 				else {
@@ -124,18 +139,32 @@ function component(width, height, color, x, y, type, category) {
         var otherright = otherobj.x + (otherobj.width);
         var othertop = otherobj.y;
         var otherbottom = otherobj.y + (otherobj.height);
-        var crash = true;
+		var crash = true;
+		
         if ((mybottom < othertop) ||
                (mytop > otherbottom) ||
                (myright < otherleft) ||
                (myleft > otherright)) {
            crash = false;
         }
+		
         return crash;
     }
+	
+	this.crashWithPlatforms = function() {
+		result = false;
+		for (var i = 0; i < platforms.length; i++) {
+			result = (result || this.crashWith(platforms[i]));
+		}
+		return result;
+	}
 }
 
 function updateGameArea() {
+	if (shootCooldown > 0) {
+		shootCooldown--;
+	}
+	
     myGameArea.clear();
 	stopMoving(myGamePiece);
 	stopMoving(myGamePiece);
@@ -144,10 +173,27 @@ function updateGameArea() {
 	}
 	background.newPos();
     background.update();
-	platforms[0].newPos();
-	platforms[0].update();
+	for (var i = 0; i < platforms.length; i++) {
+		platforms[i].newPos();
+		platforms[i].update();
+	}
+	for (var i = 0; i < projectiles.length; i++) {
+		projectiles[i].newPos();
+		projectiles[i].update();
+	}
     myGamePiece.newPos();
     myGamePiece.update();
+}
+
+function addProjectile(){
+	newProjectile = new component(40,20, "morton.png", myGamePiece.x, myGamePiece.y, "image", "projectile");
+	for (var i = 0; i < projectiles.length; i++) {
+		if (!projectiles[i]) {
+			projectiles[i] = newProjectile;
+			return;
+		}
+	}
+	projectiles[projectiles.length] = newProjectile;
 }
 
 function handleInput() {
@@ -160,6 +206,12 @@ function handleInput() {
 	 
 	if (myGameArea.keys[65]) {myGamePiece.speedX = -5; }
     if (myGameArea.keys[68]) {myGamePiece.speedX = 5; }
+	if (myGameArea.keys[32]) {
+		if (shootCooldown <= 0) {
+			addProjectile();
+			shootCooldown = 15;
+		}
+	}
 }
 
 
