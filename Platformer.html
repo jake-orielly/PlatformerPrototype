@@ -18,13 +18,16 @@ var inAir = true;
 var platforms = [];
 var projectiles = [];
 var shootCooldown = 0;
+var turn = false;
+var dead = false;
 
 function startGame() {
-	myGamePiece = new component(50, 50, "Dao.png", 50, 550, "image", "player");
+	myGamePiece = new component(40, 100, "Dao.png", 50, 550, "image", "player");
 	platforms[0] = new component(115, 15, "red", 150, 470, "red", "scene");
 	platforms[1] = new component(115, 15, "red", 345, 415, "red", "scene");
 	platforms[2] = new component(115, 15, "red", 545, 415, "red", "scene");
 	background = new component(2500, 600, "background.png", 0, 0, "image", "scene");
+	enemy = new component(62, 81, "Kappa.png", 495, 515, "image", "scene"); 
 	myGameArea.start();
 }
 
@@ -109,6 +112,7 @@ function component(width, height, color, x, y, type, category) {
 							for (var i = 0; i < platforms.length; i++) {
 								platforms[i].x -= this.speedX;
 							}
+							enemy.x -= this.speedX;
 						}				
 				}
 				else {
@@ -117,6 +121,21 @@ function component(width, height, color, x, y, type, category) {
 			}
 			
 			else {
+			
+				if (this == enemy && !dead) {
+					if (!turn) {
+						this.speedX = 3;
+					}
+					
+					else {
+						this.speedX = -3;
+					}
+					
+					if ((this.x > 700 && !turn) || (this.x < 400 && turn)) {
+						turn = !turn;
+					}
+					
+				}
 				this.x += this.speedX;
 				this.y += this.speedY;
 			}
@@ -163,6 +182,10 @@ function component(width, height, color, x, y, type, category) {
 function updateGameArea() {
 	if (shootCooldown > 0) {
 		shootCooldown--;
+		
+		/*if (shootCooldown == 10 ) {
+			myGamePiece.image.src = "Dao.png";
+		}*/
 	}
 	
     myGameArea.clear();
@@ -180,13 +203,32 @@ function updateGameArea() {
 	for (var i = 0; i < projectiles.length; i++) {
 		projectiles[i].newPos();
 		projectiles[i].update();
+		
+		if (projectiles[i].crashWith(enemy)) {
+			//myGameArea.stop();
+			enemy.image.src = "Dead.png";
+			stopMoving(enemy);
+			dead = true;
+			/*for (var j = i; j < projectiles.length; j++) {
+				projectiles[j] = projectiles[j+1];
+			}*/
+		}
 	}
+	
+	if (myGamePiece.crashWith(enemy)) {
+		myGameArea.stop();
+		document.write("You lose.");
+	}
+	
+	
+	enemy.newPos();
+	enemy.update();
     myGamePiece.newPos();
     myGamePiece.update();
 }
 
 function addProjectile(){
-	newProjectile = new component(40,20, "morton.png", myGamePiece.x, myGamePiece.y, "image", "projectile");
+	newProjectile = new component(40,20, "morton.png", myGamePiece.x, myGamePiece.y + myGamePiece.height/3, "image", "projectile");
 	for (var i = 0; i < projectiles.length; i++) {
 		if (!projectiles[i]) {
 			projectiles[i] = newProjectile;
@@ -197,6 +239,7 @@ function addProjectile(){
 }
 
 function handleInput() {
+	var gunShot;
     if (myGameArea.keys[87]) {
 		if (!inAir) {
 			inAir = true;
@@ -208,12 +251,29 @@ function handleInput() {
     if (myGameArea.keys[68]) {myGamePiece.speedX = 5; }
 	if (myGameArea.keys[32]) {
 		if (shootCooldown <= 0) {
+			//myGamePiece.image.src = "DaoShooting.png";
 			addProjectile();
 			shootCooldown = 15;
+			gunShot = new sound("shoot.mp3");
+			gunShot.play();
 		}
 	}
 }
 
+function sound(src) {
+    this.sound = document.createElement("audio");
+    this.sound.src = src;
+    this.sound.setAttribute("preload", "auto");
+    this.sound.setAttribute("controls", "none");
+    this.sound.style.display = "none";
+    document.body.appendChild(this.sound);
+    this.play = function(){
+        this.sound.play();
+    }
+    this.stop = function(){
+        this.sound.pause();
+    }
+}
 
 function stopMoving(given) {
 	if (given.category == "player") {
